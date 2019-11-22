@@ -14,6 +14,7 @@ from gym_line_follower.track_plane_builder import build_track_plane
 from gym_line_follower.bullet_client import BulletClient
 from gym_line_follower.line_follower_bot import LineFollowerBot
 from gym_line_follower.randomizer_dict import RandomizerDict
+from gym_line_follower.envs.line_follower_env import LineFollowerEnv, LineFollowerCameraEnv
 
 from keras.models import Sequential, Model
 from keras.layers import Dense, Flatten, Concatenate, Input, Dropout
@@ -42,7 +43,7 @@ class LineFollowerEnv(gym.Env):
     SUPPORTED_OBSV_TYPE = ["points_visible", "points_latch", "points_latch_bool", "camera"]
 
     def __init__(self, gui=True, nb_cam_pts=8, sub_steps=10, sim_time_step=1 / 250,
-                 max_track_err=0.3, power_limit=0.4, max_time=60, config=None, randomize=True, obsv_type="points_latch",
+                 max_track_err=0.3, power_limit=1, max_time=60, config=None, randomize=True, obsv_type="points_latch",
                  track=None, track_render_params=None):
         """
         Create environment.
@@ -362,8 +363,8 @@ env = LineFollowerEnv(gui=True, nb_cam_pts=8, max_track_err=0.4, power_limit=0.4
 env.reset()
 for _ in range(100):
 	for i in range(1000):
-		render()
-		obsv, rew, done, info = env.step((0., 0.))
+		#render()
+		obsv, rew, done, info = env.step((1, 1))
 		sleep(0.05)
 		if done:
 			break
