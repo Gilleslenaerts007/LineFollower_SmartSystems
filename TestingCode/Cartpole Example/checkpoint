@@ -1,0 +1,2 @@
+model_checkpoint_path: "C:\\LineFollower_SS\\LineFollower_SmartSystems\\TestingCode\\400.model"
+all_model_checkpoint_paths: "C:\\LineFollower_SS\\LineFollower_SmartSystems\\TestingCode\\400.model"
