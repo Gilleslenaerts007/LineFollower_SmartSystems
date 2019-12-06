@@ -1,5 +1,22 @@
 import os
 import pickle
+import json
+import warnings
+from time import time, sleep
+import random
+
+from gym import spaces
+from gym.utils import seeding
+import numpy as np
+import pybullet as p
+import matplotlib.pyplot as plt
+
+from gym_line_follower.track import Track
+from gym_line_follower.track_plane_builder import build_track_plane
+from gym_line_follower.bullet_client import BulletClient
+from gym_line_follower.line_follower_bot import LineFollowerBot
+from gym_line_follower.randomizer_dict import RandomizerDict
+from gym_line_follower.envs.line_follower_env import LineFollowerEnv, LineFollowerCameraEnv
 
 from keras.models import Sequential, Model
 from keras.layers import Dense, Flatten, Concatenate, Input, Dropout
@@ -9,12 +26,42 @@ from rl.agents import DDPGAgent
 from rl.random import OrnsteinUhlenbeckProcess
 from rl.memory import SequentialMemory
 from rl.callbacks import ModelIntervalCheckpoint
-import gym
 
-import gym_line_follower  # to register environment
+import gym  # open ai gym
+import pybulletgym  # register PyBullet enviroments with open ai gym
+import gym_line_follower
 
-# Number of past subsequent observations to take as input
-window_length = 5
+
+LR = 1e-2
+goal_steps = 1000
+score_requirement = 84
+initial_games = 30000
+scores = []
+choices = []
+
 env = gym.make("LineFollower-v0")
-  #  train(env, "ddpg_1", steps=100000, pretrained_path=None)
-  #  test(env, "models/ddpg_1/last_weights.h5f")
+# env.render('rgb_array') # 'rgb_array' or 'human'
+for _ in range(100):
+    score = 0
+    prev_obs = []
+    env.reset()
+    for i in range(goal_steps):
+        env.render()
+        action = random.randrange(1,3)
+		#Actions 0: RIGHT, 1:straight, 2:Left 
+        obsv, rew, done, info = env.step((1, action))
+        #print(info)
+        #print(obsv)
+        print(obsv[1], obsv[3], obsv[5], obsv[7], obsv[10], obsv[12], obsv[14])
+        choices.append(action)
+        score+=rew
+        scores.append(score)
+        sleep(4)
+        #if done:
+           #break
+
+Average = sum(scores)/len(scores)
+print('Average Score:',Average)
+print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices)))
+print(score_requirement)
+env.close()

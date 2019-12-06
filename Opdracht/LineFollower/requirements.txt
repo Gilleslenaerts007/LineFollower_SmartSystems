@@ -1,3 +1,0 @@
-# packages in environment at C:\Users\Administrator\.conda\envs\Linefollower:
-#
-# Name                    Version                   Build  Channel

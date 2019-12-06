@@ -515,8 +515,8 @@ if __name__ == '__main__':
     # plt.imshow(img)
     # plt.show()
 
-    for i in range(9):
-        t = Track.generate(2.0, hw_ratio=0.7, seed=None,
+    for i in range(1):
+        t = Track.generate(0, hw_ratio=0.7, seed=None,
                            spikeyness=0.2, nb_checkpoints=500)
         img = t.render(ppm=1000)
         plt.subplot(3, 3, i+1)
