@@ -19,29 +19,11 @@ for  e  in  list(all_env):
 #more data means more epochs to do for good trained model.
 
 LR = 1e-2
-env = gym.make("MountainCarContinous-v0")
+env = gym.make("MountainCar-v0")
 env.reset()
 goal_steps = 500
-score_requirement = 84
-initial_games = 30000
-
-for each_game in range(100):
-    env.reset()
-    for _ in range(goal_steps):
-        env.render()
-
-        if len(prev_obs)==0:
-            action = random.randrange(0,2)
-        else:
-            action = np.argmax(model.predict(prev_obs.reshape(-1,len(prev_obs),1))[0])
-
-        choices.append(action)
-                
-        new_observation, reward, done, info = env.step(action)
-        prev_obs = new_observation
-        game_memory.append([new_observation, action])
-        score+=reward
-        if done: break
+score_requirement = 1
+initial_games = 1000
 
 def some_random_games_first():
     # Each of these is its own game.
@@ -52,18 +34,19 @@ def some_random_games_first():
             # This will display the environment
             # Only display if you really want to see it.
             # Takes much longer to display it.
-            env.render()
+			env.render()
             
             # This will just create a sample action in any environment.
             # In this environment, the action can be 0 or 1, which is left or right
-            action = env.action_space.sample()
+			action = env.action_space.sample()
             
             # this executes the environment with an action, 
             # and returns the observation of the environment, 
             # the reward, if the env is over, and other info.
-            observation, reward, done, info = env.step(action)
-            if done:
-                break                    
+			observation, reward, done, info = env.step(action)
+			print(observation, reward, done, info)
+			if done:
+				break                    
 def initial_population():
     # [OBS, MOVES]
     training_data = []
@@ -80,11 +63,11 @@ def initial_population():
         prev_observation = []
         # for each frame in 200
         for _ in range(goal_steps):
-            # choose random action (0 or 1)
-            action = random.randrange(0,2)
+            # choose random action from its list
+            action = env.action_space.sample()
             # do it!
             observation, reward, done, info = env.step(action)
-            
+			
             # notice that the observation is returned FROM the action
             # so we'll store the previous observation here, pairing
             # the prev observation to the action we'll take.
@@ -100,6 +83,7 @@ def initial_population():
         # all we're doing is reinforcing the score, we're not trying 
         # to influence the machine in any way as to HOW that score is 
         # reached.
+
         if score >= score_requirement:
             accepted_scores.append(score)
             for data in game_memory:
@@ -147,8 +131,8 @@ def neural_network_model(input_size):
     network = fully_connected(network, 128, activation='relu')
     network = dropout(network, 0.8)
 
-    #2 stands for the amount of action/feutures
-    network = fully_connected(network, 2, activation='softmax')
+    #2 stands for the amount of action/features
+    network = fully_connected(network, 3, activation='softmax')
     network = regression(network, optimizer='adam', learning_rate=LR, loss='categorical_crossentropy', name='targets')
     model = tflearn.DNN(network, tensorboard_dir='log')
 
@@ -179,7 +163,7 @@ for each_game in range(100):
         env.render()
 
         if len(prev_obs)==0:
-            action = random.randrange(0,2)
+            action = env.action_space.sample()
         else:
             action = np.argmax(model.predict(prev_obs.reshape(-1,len(prev_obs),1))[0])
 

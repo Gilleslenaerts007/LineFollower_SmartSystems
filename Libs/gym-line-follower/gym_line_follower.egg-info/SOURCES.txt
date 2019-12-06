@@ -1,4 +1,3 @@
-README.md
 setup.py
 gym_line_follower.egg-info/PKG-INFO
 gym_line_follower.egg-info/SOURCES.txt
