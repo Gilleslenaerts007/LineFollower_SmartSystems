@@ -1,4 +1,3 @@
-README.md
 setup.py
 pybulletgym/__init__.py
 pybulletgym.egg-info/PKG-INFO

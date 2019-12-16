@@ -33,34 +33,50 @@ import gym_line_follower
 
 
 LR = 1e-2
-goal_steps = 500
+goal_steps = 1000
 score_requirement = 84
 initial_games = 30000
 scores = []
 choices = []
 
+def plotCameraPOV():
+    plt.plot(env.get_pov_image())
+    plt.ylabel('LineCameraPOV')
+    plt.show()
+
+
 env = gym.make("LineFollower-v0")
+env.reset()
 # env.render('rgb_array') # 'rgb_array' or 'human'
 for _ in range(100):
     score = 0
     prev_obs = []
     env.reset()
+    action = random.randrange(1,3)
     for i in range(goal_steps):
-        env.render()
-        action = random.randrange(0,2)
+        env.render()      
 		#Actions 0: RIGHT, 1:straight, 2:Left 
-        obsv, rew, done, info = env.step((1, 1))
+        obsv, rew, done, info = env.step((1, action))
         #print(info)
-        #print(obsv)
+        if (rew >= -100):
+            print(rew)
+            action = 0
+        else:
+            action = 2
+        #print(obsv[1], obsv[3], obsv[5], obsv[7], obsv[10], obsv[12], obsv[14])
         choices.append(action)
-        score+=rew
+        score=rew
         scores.append(score)
-        sleep(0.05)
-        if done:
-           break
+        print(scores)
+        print(env._get_info())
+        #plotCameraPOV()
+        sleep(10)
+        #if done:
+           #break
+        env.reset()
+env.close()
 
 Average = sum(scores)/len(scores)
 print('Average Score:',Average)
 print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices)))
 print(score_requirement)
-env.close()

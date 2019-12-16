@@ -39,29 +39,48 @@ initial_games = 30000
 scores = []
 choices = []
 
+#Problems with plotting returned data from .._env.py
+def plotCameraPOV():
+    #plt.plot(env.render(mode='pov') )
+    plt.plot(env.render(mode='rgb_array') ) #This render renders the plt figure, need to know how to show while running
+    plt.ylabel('LineCameraPOV')
+    plt.show()
+
+
 env = gym.make("LineFollower-v0")
+env.reset()
 # env.render('rgb_array') # 'rgb_array' or 'human'
 for _ in range(100):
     score = 0
     prev_obs = []
     env.reset()
+    action = random.randrange(1,3)
     for i in range(goal_steps):
-        env.render()
-        action = random.randrange(1,3)
+        #☺plotCameraPOV()     
 		#Actions 0: RIGHT, 1:straight, 2:Left 
         obsv, rew, done, info = env.step((1, action))
         #print(info)
-        #print(obsv)
-        print(obsv[1], obsv[3], obsv[5], obsv[7], obsv[10], obsv[12], obsv[14])
+        if (rew <= -100):
+            print(rew)
+            plt.plot(env.render(mode = 'human'))
+            plt.show()
+            break
+        else:
+            action = 1
+        #print(obsv[1], obsv[3], obsv[5], obsv[7], obsv[10], obsv[12], obsv[14])
         choices.append(action)
-        score+=rew
+        score=rew
         scores.append(score)
-        sleep(4)
+        print(scores)
+        print(env._get_info())
+        #plotCameraPOV()
+        sleep(2)
         #if done:
            #break
+    env.render(mode = 'human')
+env.close()
 
 Average = sum(scores)/len(scores)
 print('Average Score:',Average)
 print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices)))
 print(score_requirement)
-env.close()

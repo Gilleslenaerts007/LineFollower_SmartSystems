@@ -302,6 +302,7 @@ class LineFollowerEnv(gym.Env):
             self.plot["progress_line"].set_ydata(self.track.pts[0:self.track.progress_idx, 1])
 
         if mode == "human":
+            
             plt.draw()
         elif mode == "rgb_array":
             img = fig2rgb_array(self.plot["fig"])
