@@ -315,6 +315,7 @@ class LineFollowerEnv(gym.Env):
             return self.follower_bot.get_pov_image()
         else:
             super(LineFollowerEnv, self).render(mode=mode)
+        print("Print plot")
 
     def close(self):
         if self.plot:

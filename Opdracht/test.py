@@ -64,13 +64,15 @@ for _ in range(100):
         else:
             action = 2
         #print(obsv[1], obsv[3], obsv[5], obsv[7], obsv[10], obsv[12], obsv[14])
+        from .reference_geometry import CameraWindow, ReferencePoint
+        
         choices.append(action)
         score=rew
         scores.append(score)
         print(scores)
         print(env._get_info())
         #plotCameraPOV()
-        sleep(10)
+        sleep(0.2)
         #if done:
            #break
         env.reset()
