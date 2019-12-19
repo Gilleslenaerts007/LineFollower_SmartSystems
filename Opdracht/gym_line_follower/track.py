@@ -4,6 +4,7 @@ import random
 import os
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.special import binom
 from shapely.geometry import MultiPoint, Point, LineString
 from shapely.ops import nearest_points
@@ -14,15 +15,26 @@ root_dir = os.path.dirname(__file__)
 
 
 def bernstein(n, k, t):
+#    print ('loop')
+    #print('n = ' + str(n))
+    #print('k = ' + str(k))
+    #print('t = ' + str(t))
+    #val = binom(n, k) * t ** k * (1. - t) ** (n - k)
+    #print (val)
     return binom(n, k) * t ** k * (1. - t) ** (n - k)
+
 
 
 def bezier(points, num=200):
     N = len(points)
     t = np.linspace(0, 1, num=num)
     curve = np.zeros((num, 2))
+    #print('bezier point:')
+    #print(points)
+#    print (type(curve))
     for i in range(N):
         curve += np.outer(bernstein(N - 1, i, t), points[i])
+        #print ('t = '+ str(t))
     return curve
 
 
@@ -32,6 +44,8 @@ class Segment:
         self.p2 = p2
         self.angle1 = angle1
         self.angle2 = angle2
+        print('angle 1 = ' + str(self.angle1))
+        print('angle 2 = ' + str(self.angle2))
         self.numpoints = kw.get("numpoints", 200)
         r = kw.get("r", 0.3)
         d = np.sqrt(np.sum((self.p2 - self.p1) ** 2))
@@ -46,24 +60,32 @@ class Segment:
                                            self.r * np.sin(self.angle1)])
         self.p[2, :] = self.p2 + np.array([self.r * np.cos(self.angle2 + np.pi),
                                            self.r * np.sin(self.angle2 + np.pi)])
+        #print ('intermed point = ' + str(self.p))
         self.curve = bezier(self.p, self.numpoints)
+#        print(self.p)
+
 
 
 def get_curve(points, **kw):
     segments = []
-    for i in range(len(points) - 1):
+    print ('curve points are  : '+ str(points))
+    for i in range(1,(len(points) - 1)):
         seg = Segment(points[i, :2], points[i + 1, :2], points[i, 2], points[i + 1, 2], **kw)
+        
+        # print (points[i,:2])
+        # print (points[i+1,:2])
+        # print ('')
+        # print (points[i,2])
+        # print (points[i+1,2])
         segments.append(seg)
     curve = np.concatenate([s.curve for s in segments])
     return segments, curve
-
 
 def ccw_sort(p):
     d = p - np.mean(p, axis=0)
     s = np.arctan2(d[:, 0], d[:, 1])
     return p[np.argsort(s), :]
-
-
+    
 def get_bezier_curve(a, rad=0.2, edgy=0):
     """ given an array of points *a*, create a curve through
     those points.
@@ -71,21 +93,40 @@ def get_bezier_curve(a, rad=0.2, edgy=0):
           control points.
     *edgy* is a parameter which controls how "edgy" the curve is,
            edgy=0 is smoothest."""
+    print('a start is ' + str(a))
     p = np.arctan(edgy) / np.pi + .5
     a = ccw_sort(a)
+    print('a sorted = ' + str(a))
     a = np.append(a, np.atleast_2d(a[0, :]), axis=0)
+    print('a appended is ' + str(a))
     d = np.diff(a, axis=0)
     ang = np.arctan2(d[:, 1], d[:, 0])
+    
     f = lambda ang: (ang >= 0) * ang + (ang < 0) * (ang + 2 * np.pi)
     ang = f(ang)
+    
     ang1 = ang
     ang2 = np.roll(ang, 1)
+    
     ang = p * ang1 + (1 - p) * ang2 + (np.abs(ang2 - ang1) > np.pi) * np.pi
     ang = np.append(ang, [ang[0]])
+    print('appended in a  = ' + str(np.atleast_2d(ang).T))
     a = np.append(a, np.atleast_2d(ang).T, axis=1)
+    print('a2 = ' + str(a))
     s, c = get_curve(a, r=rad, method="var")
     x, y = c.T
+    print(type(x))
     return x, y, a
+
+def draw_circle(r,res):
+    x = 0
+    y = 0
+    for i in range(res):
+        angle = i*(2*np.pi/res)
+        x = np.append(x, r*np.cos(angle))
+        y = np.append(y, r*np.sin(angle))
+        pts = np.stack((x, y), axis=-1)
+    return pts
 
 
 def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts):
@@ -171,7 +212,58 @@ class Track:
         self.done = False
 
     @classmethod
-    def generate(cls, approx_width=1., hw_ratio=0.5, seed=None, irregularity=0.2,
+    def generate(cls, approx_width=1., hw_ratio=1, seed=None, irregularity=0,
+                 spikeyness=0.2, num_verts=10, *args, **kwargs):
+        """
+        Generate random track.
+        Adapted from: https://stackoverflow.com/a/45618741/9908077
+        :param approx_width: approx. width of generated track
+        :param hw_ratio: ratio height / width
+        :param seed: seed for random generator
+        :return: Track instance
+        """
+        # Generate random points
+        random.seed(seed)
+        upscale = 1000.  # upscale so curve gen fun works
+        r = upscale * approx_width / 2.
+        #pts = generate_polygon(0, 0, r, irregularity=irregularity, spikeyness=spikeyness, numVerts=num_verts)
+        pts = [(0,0),(500,0),(500,500)]
+        pts2 = [(400,0),(400,50)]
+        pts = np.array(pts)
+        pts2 = np.array(pts2)
+        # Generate curve with points
+        x, y, _= get_bezier_curve(pts, rad=0, edgy=0)
+        print('x')      
+        print(type (x[0]))
+        print('y')
+        print(type(y[0]))
+        x1 ,y1, _ = get_bezier_curve(pts2, rad=0, edgy=0)
+#        x2, y2 = draw_circle(50,50)
+#        x = np.append(x,x2)
+#        y = np.append(y,y2)
+        # Remove duplicated point
+        x = x[:-1]
+        y = y[:-1]
+
+        # Scale y
+        y = y * hw_ratio
+
+        # Scale units
+        unit_scale = 1000
+        x, y = x / unit_scale, y / unit_scale
+        pts = np.stack((x, y), axis=-1)
+        #print(pts)
+        # Check width / height:
+        if max(abs(min(x)), max(x)) * 2 > 1.5 * approx_width or max(abs(min(y)), max(y)) * 2 > 1.5 * approx_width * hw_ratio:
+            return cls.generate(approx_width, hw_ratio, seed, irregularity, spikeyness, num_verts, *args, **kwargs)
+
+        # Randomly flip track direction
+        np.random.seed(seed)
+        if np.random.choice([True, False]):
+            pts = np.flip(pts, axis=0)
+        return cls(pts, *args, **kwargs)
+    @classmethod
+    def generate2(cls, approx_width=1., hw_ratio=0.5, seed=None, irregularity=0.2,
                  spikeyness=0.2, num_verts=10, *args, **kwargs):
         """
         Generate random track.
@@ -211,7 +303,6 @@ class Track:
         if np.random.choice([True, False]):
             pts = np.flip(pts, axis=0)
         return cls(pts, *args, **kwargs)
-
     @classmethod
     def from_file(cls, path, *args, **kwargs):
         with open(path, "r") as f:
@@ -310,7 +401,6 @@ class Track:
                     x2, y2 = c[i + 1]
                     x2_img = int(round((x2 + w / 2) * ppm, ndigits=0))
                     y2_img = int(round(h_res - (y2 + h / 2) * ppm, ndigits=0))
-
                     cv2.line(line, (x1_img, y1_img), (x2_img, y2_img), color=line_bgr, thickness=t_res,
                              lineType=cv2.LINE_AA)
         else:
@@ -328,7 +418,7 @@ class Track:
 
         alpha = line_opacity
         out = cv2.addWeighted(line, alpha, bg, 1 - alpha, 0)
-
+    
         if save is not None:
             cv2.imwrite(save, out)
         return out
@@ -338,6 +428,7 @@ class Track:
             return self._render(*args, **kwargs, **self.render_params)
         else:
             return self._render(*args, **kwargs)
+
 
     def distance_from_point(self, pt):
         """
@@ -525,4 +616,3 @@ if __name__ == '__main__':
     # plt.tight_layout()
     plt.savefig("track_generator.png", dpi=300)
     plt.show()
-

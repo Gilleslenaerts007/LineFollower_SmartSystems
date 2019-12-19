@@ -10,6 +10,7 @@ import numpy as np
 import pybullet as p
 
 from gym_line_follower.track import Track
+#from gym_line_follower.RechthoekTrack import TrackRechte
 from gym_line_follower.track_plane_builder import build_track_plane
 from gym_line_follower.bullet_client import BulletClient
 from gym_line_follower.line_follower_bot import LineFollowerBot
@@ -139,8 +140,9 @@ class LineFollowerEnv(gym.Env):
         if self.preset_track:
             self.track = self.preset_track
         else:
-            self.track = Track.generate(1.75, hw_ratio=0.7, seed=None if self.randomize else 4125,
+            self.track = Track.generate(1.75, hw_ratio=0.7, seed= 4125,
                                         spikeyness=0.3, nb_checkpoints=500, render_params=self.track_render_params)
+           #self.track = Track.generate(1.75, hw_ratio=0.7, seed=None if self.randomize else 4125, spikeyness=0.3, nb_checkpoints=500, render_params=self.track_render_params)
 
         start_yaw = self.track.start_angle
         if self.randomize:

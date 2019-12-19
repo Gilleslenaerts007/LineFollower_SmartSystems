@@ -64,7 +64,6 @@ for _ in range(100):
         else:
             action = 2
         #print(obsv[1], obsv[3], obsv[5], obsv[7], obsv[10], obsv[12], obsv[14])
-        from .reference_geometry import CameraWindow, ReferencePoint
         
         choices.append(action)
         score=rew
