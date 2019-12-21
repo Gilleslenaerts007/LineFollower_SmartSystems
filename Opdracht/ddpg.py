@@ -63,9 +63,10 @@ def build_agent(env):
 def train(env, name, steps=25000, pretrained_path=None):
     agent = build_agent(env)
     # Load pre-trained weights optionally
+    print(pretrained_path)
     if pretrained_path is not None:
-        agent.load_weights(pretrained_path)
-
+        agent.load_weights(os.path.join(pretrained_path,"weights"))
+        
     save_path = os.path.join("models", name)
     os.makedirs(save_path, exist_ok=False)
     os.makedirs(os.path.join(save_path, "checkpoints"), exist_ok=False)
@@ -81,11 +82,12 @@ def train(env, name, steps=25000, pretrained_path=None):
 
 def test(env, path):
     agent = build_agent(env)
-    agent.load_weights(path)
+    agent.load_weights(os.path.join(path,"weights"))
     agent.test(env, nb_episodes=20, visualize=False)
 
 
 if __name__ == '__main__':
     env = gym.make("LineFollower-v0")
-    train(env, "ddpg_1", steps=100000, pretrained_path=None)
-    test(env, "trained_ddpg/weights_actor.h5f")
+    #train(env, "ddpg_3", steps=100000, pretrained_path="load_weights")
+    @train(env, "firsttracker", steps=100000, pretrained_path=None)
+    test(env, "load_weights")

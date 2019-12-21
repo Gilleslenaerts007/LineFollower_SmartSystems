@@ -44,8 +44,8 @@ class Segment:
         self.p2 = p2
         self.angle1 = angle1
         self.angle2 = angle2
-        print('angle 1 = ' + str(self.angle1))
-        print('angle 2 = ' + str(self.angle2))
+#        print('angle 1 = ' + str(self.angle1))
+#        print('angle 2 = ' + str(self.angle2))
         self.numpoints = kw.get("numpoints", 200)
         r = kw.get("r", 0.3)
         d = np.sqrt(np.sum((self.p2 - self.p1) ** 2))
@@ -68,8 +68,8 @@ class Segment:
 
 def get_curve(points, **kw):
     segments = []
-    print ('curve points are  : '+ str(points))
-    for i in range(1,(len(points) - 1)):
+#    print ('curve points are  : '+ str(points))
+    for i in range(0,(len(points)-2)):
         seg = Segment(points[i, :2], points[i + 1, :2], points[i, 2], points[i + 1, 2], **kw)
         
         # print (points[i,:2])
@@ -79,6 +79,8 @@ def get_curve(points, **kw):
         # print (points[i+1,2])
         segments.append(seg)
     curve = np.concatenate([s.curve for s in segments])
+    print('type curve = ' + str(type(curve)))
+#    print('curve = '+ str(curve))
     return segments, curve
 
 def ccw_sort(p):
@@ -93,12 +95,12 @@ def get_bezier_curve(a, rad=0.2, edgy=0):
           control points.
     *edgy* is a parameter which controls how "edgy" the curve is,
            edgy=0 is smoothest."""
-    print('a start is ' + str(a))
+#    print('a start is ' + str(a))
     p = np.arctan(edgy) / np.pi + .5
-    a = ccw_sort(a)
-    print('a sorted = ' + str(a))
+#    a = ccw_sort(a)
+#    print('a sorted = ' + str(a))
     a = np.append(a, np.atleast_2d(a[0, :]), axis=0)
-    print('a appended is ' + str(a))
+#    print('a appended is ' + str(a))
     d = np.diff(a, axis=0)
     ang = np.arctan2(d[:, 1], d[:, 0])
     
@@ -110,26 +112,16 @@ def get_bezier_curve(a, rad=0.2, edgy=0):
     
     ang = p * ang1 + (1 - p) * ang2 + (np.abs(ang2 - ang1) > np.pi) * np.pi
     ang = np.append(ang, [ang[0]])
-    print('appended in a  = ' + str(np.atleast_2d(ang).T))
+#    print('appended in a  = ' + str(np.atleast_2d(ang).T))
     a = np.append(a, np.atleast_2d(ang).T, axis=1)
-    print('a2 = ' + str(a))
+#    print('a2 = ' + str(a))
     s, c = get_curve(a, r=rad, method="var")
     x, y = c.T
-    print(type(x))
+    print('type bezier x = ' + str(type(x)))
     return x, y, a
 
-def draw_circle(r,res):
-    x = 0
-    y = 0
-    for i in range(res):
-        angle = i*(2*np.pi/res)
-        x = np.append(x, r*np.cos(angle))
-        y = np.append(y, r*np.sin(angle))
-        pts = np.stack((x, y), axis=-1)
-    return pts
 
-
-def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts):
+def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts,kwad):
     """
     Start with the centre of the geometry at ctrX, ctrY,
     then creates the geometry by sampling points on a circle around the centre.
@@ -159,13 +151,15 @@ def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts):
         sum = sum + tmp
 
     # normalize the steps so that point 0 and point n+1 are the same
-    k = sum / (2 * math.pi)
+    k = sum / ((2 * math.pi)/4)
     for i in range(numVerts):
         angleSteps[i] = angleSteps[i] / k
 
     # now generate the points
     points = []
-    angle = random.uniform(0, 2 * math.pi)
+#    angle = random.uniform(0, 2 * math.pi)
+    angle = 0 + (kwad * ((2*math.pi)/4) )
+    print ('angle ' + str(angle) )
     for i in range(numVerts):
         r_i = np.clip(random.gauss(aveRadius, spikeyness), 0, 2 * aveRadius)
         x = ctrX + r_i * math.cos(angle)
@@ -173,7 +167,6 @@ def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts):
         points.append((int(x), int(y)))
 
         angle = angle + angleSteps[i]
-
     return points
 
 
@@ -227,20 +220,41 @@ class Track:
         upscale = 1000.  # upscale so curve gen fun works
         r = upscale * approx_width / 2.
         #pts = generate_polygon(0, 0, r, irregularity=irregularity, spikeyness=spikeyness, numVerts=num_verts)
-        pts = [(0,0),(500,0),(500,500)]
-        pts2 = [(400,0),(400,50)]
+        pts = [(-500,-500),(500,-500),(500,200)]
+        pts2 = generate_polygon(200,200,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 0)
+        pts3 = generate_polygon(200,800,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 2)
+        pts4 = generate_polygon(-400,800,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 0)
+        pts5 = generate_polygon(-400,800,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 1)
+        pts6 = [(-700,700),(-700,-500),(-500,-500)]
         pts = np.array(pts)
         pts2 = np.array(pts2)
+        pts3 = np.array(pts3)
+        pts4 = np.array(pts4)
+        pts5 = np.array(pts5)
+        pts6 = np.array(pts6)
+        print("before")
+        print(pts3)
+        #flip to left turn
+        pts3 = pts3[::-1]
+        print("after")
+        print(pts3)
         # Generate curve with points
         x, y, _= get_bezier_curve(pts, rad=0, edgy=0)
-        print('x')      
-        print(type (x[0]))
-        print('y')
-        print(type(y[0]))
-        x1 ,y1, _ = get_bezier_curve(pts2, rad=0, edgy=0)
-#        x2, y2 = draw_circle(50,50)
-#        x = np.append(x,x2)
-#        y = np.append(y,y2)
+        x2,y2, _= get_bezier_curve(pts2, rad=0, edgy=0)
+        x3,y3, _= get_bezier_curve(pts3, rad=0, edgy=0)
+        x4,y4, _= get_bezier_curve(pts4, rad=0, edgy=0)
+        x5,y5, _= get_bezier_curve(pts5, rad=0, edgy=0)
+        x6,y6, _= get_bezier_curve(pts6, rad=0, edgy=0)
+        x = np.append(x,x2)
+        y = np.append(y,y2)
+        x = np.append(x,x3)
+        y = np.append(y,y3)
+        x = np.append(x,x4)
+        y = np.append(y,y4)
+        x = np.append(x,x5)
+        y = np.append(y,y5)
+        x = np.append(x,x6)
+        y = np.append(y,y6)
         # Remove duplicated point
         x = x[:-1]
         y = y[:-1]
@@ -249,51 +263,11 @@ class Track:
         y = y * hw_ratio
 
         # Scale units
-        unit_scale = 1000
+        unit_scale = 1600
         x, y = x / unit_scale, y / unit_scale
         pts = np.stack((x, y), axis=-1)
+        print ('stacked' + str(pts))
         #print(pts)
-        # Check width / height:
-        if max(abs(min(x)), max(x)) * 2 > 1.5 * approx_width or max(abs(min(y)), max(y)) * 2 > 1.5 * approx_width * hw_ratio:
-            return cls.generate(approx_width, hw_ratio, seed, irregularity, spikeyness, num_verts, *args, **kwargs)
-
-        # Randomly flip track direction
-        np.random.seed(seed)
-        if np.random.choice([True, False]):
-            pts = np.flip(pts, axis=0)
-        return cls(pts, *args, **kwargs)
-    @classmethod
-    def generate2(cls, approx_width=1., hw_ratio=0.5, seed=None, irregularity=0.2,
-                 spikeyness=0.2, num_verts=10, *args, **kwargs):
-        """
-        Generate random track.
-        Adapted from: https://stackoverflow.com/a/45618741/9908077
-        :param approx_width: approx. width of generated track
-        :param hw_ratio: ratio height / width
-        :param seed: seed for random generator
-        :return: Track instance
-        """
-        # Generate random points
-        random.seed(seed)
-        upscale = 1000.  # upscale so curve gen fun works
-        r = upscale * approx_width / 2.
-        pts = generate_polygon(0, 0, r, irregularity=irregularity, spikeyness=spikeyness, numVerts=num_verts)
-        pts = np.array(pts)
-
-        # Generate curve with points
-        x, y, _ = get_bezier_curve(pts, rad=0.2, edgy=0)
-        # Remove duplicated point
-        x = x[:-1]
-        y = y[:-1]
-
-        # Scale y
-        y = y * hw_ratio
-
-        # Scale units
-        unit_scale = 1000
-        x, y = x / unit_scale, y / unit_scale
-        pts = np.stack((x, y), axis=-1)
-
         # Check width / height:
         if max(abs(min(x)), max(x)) * 2 > 1.5 * approx_width or max(abs(min(y)), max(y)) * 2 > 1.5 * approx_width * hw_ratio:
             return cls.generate(approx_width, hw_ratio, seed, irregularity, spikeyness, num_verts, *args, **kwargs)
