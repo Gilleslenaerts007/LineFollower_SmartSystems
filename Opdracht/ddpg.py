@@ -87,7 +87,16 @@ def test(env, path):
 
 
 if __name__ == '__main__':
+    
+    '''
+    # delete if it's registered
+    env_name = 'LineFollower-v0'
+    if env_name in gym.envs.registry.env_specs:
+       del gym.envs.registry.env_specs[env_name]
+    '''
+
+    
     env = gym.make("LineFollower-v0")
-    #train(env, "ddpg_3", steps=100000, pretrained_path="load_weights")
-    @train(env, "firsttracker", steps=100000, pretrained_path=None)
+    train(env, "ddpg_3", steps=100000, pretrained_path="load_weights")
+    #train(env, "firsttracker", steps=100000, pretrained_path=None)
     test(env, "load_weights")

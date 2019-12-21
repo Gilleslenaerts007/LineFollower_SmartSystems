@@ -15,12 +15,6 @@ root_dir = os.path.dirname(__file__)
 
 
 def bernstein(n, k, t):
-#    print ('loop')
-    #print('n = ' + str(n))
-    #print('k = ' + str(k))
-    #print('t = ' + str(t))
-    #val = binom(n, k) * t ** k * (1. - t) ** (n - k)
-    #print (val)
     return binom(n, k) * t ** k * (1. - t) ** (n - k)
 
 
@@ -29,12 +23,8 @@ def bezier(points, num=200):
     N = len(points)
     t = np.linspace(0, 1, num=num)
     curve = np.zeros((num, 2))
-    #print('bezier point:')
-    #print(points)
-#    print (type(curve))
     for i in range(N):
         curve += np.outer(bernstein(N - 1, i, t), points[i])
-        #print ('t = '+ str(t))
     return curve
 
 
@@ -44,8 +34,6 @@ class Segment:
         self.p2 = p2
         self.angle1 = angle1
         self.angle2 = angle2
-#        print('angle 1 = ' + str(self.angle1))
-#        print('angle 2 = ' + str(self.angle2))
         self.numpoints = kw.get("numpoints", 200)
         r = kw.get("r", 0.3)
         d = np.sqrt(np.sum((self.p2 - self.p1) ** 2))
@@ -71,15 +59,9 @@ def get_curve(points, **kw):
 #    print ('curve points are  : '+ str(points))
     for i in range(0,(len(points)-2)):
         seg = Segment(points[i, :2], points[i + 1, :2], points[i, 2], points[i + 1, 2], **kw)
-        
-        # print (points[i,:2])
-        # print (points[i+1,:2])
-        # print ('')
-        # print (points[i,2])
-        # print (points[i+1,2])
         segments.append(seg)
     curve = np.concatenate([s.curve for s in segments])
-    print('type curve = ' + str(type(curve)))
+   # print('type curve = ' + str(type(curve)))
 #    print('curve = '+ str(curve))
     return segments, curve
 
@@ -95,12 +77,8 @@ def get_bezier_curve(a, rad=0.2, edgy=0):
           control points.
     *edgy* is a parameter which controls how "edgy" the curve is,
            edgy=0 is smoothest."""
-#    print('a start is ' + str(a))
     p = np.arctan(edgy) / np.pi + .5
-#    a = ccw_sort(a)
-#    print('a sorted = ' + str(a))
     a = np.append(a, np.atleast_2d(a[0, :]), axis=0)
-#    print('a appended is ' + str(a))
     d = np.diff(a, axis=0)
     ang = np.arctan2(d[:, 1], d[:, 0])
     
@@ -112,12 +90,10 @@ def get_bezier_curve(a, rad=0.2, edgy=0):
     
     ang = p * ang1 + (1 - p) * ang2 + (np.abs(ang2 - ang1) > np.pi) * np.pi
     ang = np.append(ang, [ang[0]])
-#    print('appended in a  = ' + str(np.atleast_2d(ang).T))
     a = np.append(a, np.atleast_2d(ang).T, axis=1)
-#    print('a2 = ' + str(a))
     s, c = get_curve(a, r=rad, method="var")
     x, y = c.T
-    print('type bezier x = ' + str(type(x)))
+    #print('type bezier x = ' + str(type(x)))
     return x, y, a
 
 
@@ -159,7 +135,7 @@ def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts,k
     points = []
 #    angle = random.uniform(0, 2 * math.pi)
     angle = 0 + (kwad * ((2*math.pi)/4) )
-    print ('angle ' + str(angle) )
+    #print ('angle ' + str(angle) )
     for i in range(numVerts):
         r_i = np.clip(random.gauss(aveRadius, spikeyness), 0, 2 * aveRadius)
         x = ctrX + r_i * math.cos(angle)
@@ -232,12 +208,10 @@ class Track:
         pts4 = np.array(pts4)
         pts5 = np.array(pts5)
         pts6 = np.array(pts6)
-        print("before")
-        print(pts3)
+        
         #flip to left turn
         pts3 = pts3[::-1]
-        print("after")
-        print(pts3)
+        
         # Generate curve with points
         x, y, _= get_bezier_curve(pts, rad=0, edgy=0)
         x2,y2, _= get_bezier_curve(pts2, rad=0, edgy=0)
@@ -266,8 +240,8 @@ class Track:
         unit_scale = 1600
         x, y = x / unit_scale, y / unit_scale
         pts = np.stack((x, y), axis=-1)
-        print ('stacked' + str(pts))
         #print(pts)
+        
         # Check width / height:
         if max(abs(min(x)), max(x)) * 2 > 1.5 * approx_width or max(abs(min(y)), max(y)) * 2 > 1.5 * approx_width * hw_ratio:
             return cls.generate(approx_width, hw_ratio, seed, irregularity, spikeyness, num_verts, *args, **kwargs)
