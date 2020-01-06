@@ -30,7 +30,7 @@ class LineFollowerEnv(gym.Env):
     SUPPORTED_OBSV_TYPE = ["points_visible", "points_latch", "points_latch_bool", "camera"]
 
     def __init__(self, gui=True, nb_cam_pts=8, sub_steps=10, sim_time_step=1 / 250,
-                 max_track_err=0.3, power_limit=0.4, max_time=60, config=None, randomize=True, obsv_type="points_latch",
+                 max_track_err=0.03, power_limit=0.7, max_time=60, config=None, randomize=True, obsv_type="points_latch",
                  track=None, track_render_params=None):
         """
         Create environment.
@@ -72,6 +72,9 @@ class LineFollowerEnv(gym.Env):
         self.speed_limit = power_limit
         self.max_time = max_time
         self.max_steps = max_time / (sim_time_step * sub_steps)
+        self.flagtrack = 0
+        self.oldtrack = track
+        self.errorCorner = 0
 
         self.randomize = randomize
         self.obsv_type = obsv_type.lower()
@@ -137,18 +140,32 @@ class LineFollowerEnv(gym.Env):
             if self.track_render_params:
                 self.track_render_params.randomize()
 
+        #We only want the track to be generated and interpolated (dots connected) once so we use a flag
+        #and then reset the positions and stats with the __init__ from the class 'track'
         if self.preset_track:
             self.track = self.preset_track
         else:
-            self.track = Track.generate(1.75, hw_ratio=0.7, seed= 4125,
-                                        spikeyness=0.3, nb_checkpoints=500, render_params=self.track_render_params)
-           #self.track = Track.generate(1.75, hw_ratio=0.7, seed=None if self.randomize else 4125, spikeyness=0.3, nb_checkpoints=500, render_params=self.track_render_params)
-
+            if self.flagtrack < 1:
+                self.track = Track.generate(1.75, hw_ratio=0.7, seed= 4125,spikeyness=0.3, nb_checkpoints=500, render_params=self.track_render_params)
+                #self.track = Track.generate(1.75, hw_ratio=0.7, seed=None if self.randomize else 4125, spikeyness=0.3, nb_checkpoints=500, render_params=self.track_render_params)
+                self.flagtrack = 1
+                self.oldtrack = self.track
+            else:
+                self.track = self.oldtrack
+                # Reset progress tracking setup
+                self.track.progress = 0.
+                self.track.progress_idx = 0
+                self.track.nb_checkpoints = self.track.nb_checkpoints
+                self.track.checkpoints = [i * (self.track.length / self.track.nb_checkpoints) for i in range(1, self.track.nb_checkpoints + 1)]
+                print('Resetting')
+                self.track.next_checkpoint_idx = 0
+                self.track.done = False  
+                
         start_yaw = self.track.start_angle
         if self.randomize:
             start_yaw += np.random.uniform(-0.2, 0.2)
 
-        build_track_plane(self.track, width=3, height=2.5, ppm=1500, path=self.local_dir)
+        build_track_plane(self.track, width=6., height=5., ppm=1500, path=self.local_dir)
         self.pb_client.loadURDF(os.path.join(self.local_dir, "track_plane.urdf"))
         self.follower_bot = LineFollowerBot(self.pb_client, self.nb_cam_pts, self.track.start_xy, start_yaw,
                                             self.config, obsv_type=self.obsv_type)
@@ -209,10 +226,12 @@ class LineFollowerEnv(gym.Env):
         track_err_norm = track_err * (1.0 / self.max_track_err)
 
         self.position_on_track += self.track.length_along_track(self.follower_bot.prev_pos[0], self.follower_bot.pos[0])
-
+        print("Posi. on track is := ",self.position_on_track)
+        print("Track progress is := ",self.track.progress)
+        print('Track error is    :=', track_err)
         # Track progress
         checkpoint_reward = 1000. / self.track.nb_checkpoints
-        if self.position_on_track - self.track.progress < 0.4:
+        if self.position_on_track - self.track.progress < 1.5:
             checkpoints_reached = self.track.update_progress(self.position_on_track)
             reward += checkpoints_reached * checkpoint_reward * (1.0 - track_err_norm) ** 2
 
@@ -223,14 +242,34 @@ class LineFollowerEnv(gym.Env):
         if self.track.done:
             done = True
             print("TRACK DONE")
-        elif abs(self.position_on_track - self.track.progress) > 0.5:
-            reward = -100
-            done = True
-            print("PROGRESS DISTANCE LIMIT")
+            
+        elif abs(self.position_on_track - self.track.progress) > 1.5:
+            
+            #Check for track error in track design ~3 places.
+            if abs(self.position_on_track - self.track.progress) > 0.5:
+                print('error nr :=', self.errorCorner)
+                if self.errorCorner <= 5:
+                    self.track.progress = self.position_on_track 
+                    self.errorCorner = self.errorCorner + 1
+                    print("Corner error?")
+                else: 
+                    reward = -80
+                    done = True
+                    print("PROGRESS DISTANCE LIMIT")
+                    self.errorCorner = 0
+            else:
+                reward = -80
+                done = True
+                print("PROGRESS DISTANCE LIMIT")
+                self.errorCorner = 0
+                print('Track error was :=', track_err_norm)
+        
+            
         elif track_err > self.max_track_err:
             reward = -100.
             done = True
-            print("TRACK DISTANCE LIMIT")
+            print("TRACK ERROR LIMIT")
+            
         elif self.step_counter > self.max_steps:
             done = True
             print("TIME LIMIT")

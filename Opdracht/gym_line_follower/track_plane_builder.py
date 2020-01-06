@@ -53,6 +53,7 @@ def build_track_plane(track: Track, width=3., height=2., ppm=1000, path=None):
     mtl_file = "track_plane.generated.mtl"
     texture_file = "track_texture.generated.png"
 
+
     if path is not None:
         obj_save_path = os.path.join(path, obj_file)
         mtl_save_path = os.path.join(path, mtl_file)

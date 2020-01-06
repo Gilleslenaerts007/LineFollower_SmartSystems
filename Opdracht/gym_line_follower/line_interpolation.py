@@ -35,6 +35,7 @@ def interpolate_points(points, nb_out_points=None, segment_length=None):
         raise ValueError("Exactly one out of nr_segments and interval must not be None.")
 
     new_points = []
+    print('(line_Interpolation) this for loop takes longer the more points to connect..')
     for i in range(nr_segments + 1):
         pt_length = i * segment_length
         if pt_length > length + 1e-6:

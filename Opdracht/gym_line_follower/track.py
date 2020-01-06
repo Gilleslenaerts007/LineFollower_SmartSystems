@@ -9,10 +9,12 @@ from scipy.special import binom
 from shapely.geometry import MultiPoint, Point, LineString
 from shapely.ops import nearest_points
 
-from gym_line_follower.line_interpolation import interpolate_points
+#release
+from gym_line_follower.line_interpolation import interpolate_points 
+#debug
+#from line_interpolation import interpolate_points
 
 root_dir = os.path.dirname(__file__)
-
 
 def bernstein(n, k, t):
     return binom(n, k) * t ** k * (1. - t) ** (n - k)
@@ -56,13 +58,10 @@ class Segment:
 
 def get_curve(points, **kw):
     segments = []
-#    print ('curve points are  : '+ str(points))
     for i in range(0,(len(points)-2)):
         seg = Segment(points[i, :2], points[i + 1, :2], points[i, 2], points[i + 1, 2], **kw)
         segments.append(seg)
     curve = np.concatenate([s.curve for s in segments])
-   # print('type curve = ' + str(type(curve)))
-#    print('curve = '+ str(curve))
     return segments, curve
 
 def ccw_sort(p):
@@ -93,11 +92,10 @@ def get_bezier_curve(a, rad=0.2, edgy=0):
     a = np.append(a, np.atleast_2d(ang).T, axis=1)
     s, c = get_curve(a, r=rad, method="var")
     x, y = c.T
-    #print('type bezier x = ' + str(type(x)))
     return x, y, a
 
 
-def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts,kwad):
+def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts, kwad, amount, invert):
     """
     Start with the centre of the geometry at ctrX, ctrY,
     then creates the geometry by sampling points on a circle around the centre.
@@ -112,38 +110,47 @@ def generate_polygon(ctrX, ctrY, aveRadius, irregularity, spikeyness, numVerts,k
     numVerts - self-explanatory
 
     Returns a list of vertices, in CCW order."""
-
-    irregularity = np.clip(irregularity, 0, 1) * 2 * math.pi / numVerts
+    nrVerts = int(numVerts / 8)
+    irregularity = np.clip(irregularity, 0, 1) * 2 * math.pi / nrVerts
     spikeyness = np.clip(spikeyness, 0, 1) * aveRadius
 
     # generate n angle steps
     angleSteps = []
-    lower = (2 * math.pi / numVerts) - irregularity
-    upper = (2 * math.pi / numVerts) + irregularity
+    lower = (2 * math.pi / nrVerts) - irregularity
+    upper = (2 * math.pi / nrVerts) + irregularity
     sum = 0
-    for i in range(numVerts):
+    for i in range(nrVerts):
         tmp = random.uniform(lower, upper)
         angleSteps.append(tmp)
         sum = sum + tmp
 
     # normalize the steps so that point 0 and point n+1 are the same
-    k = sum / ((2 * math.pi)/4)
-    for i in range(numVerts):
+    k = sum / ((2 * math.pi)*amount/8)
+    for i in range(nrVerts):
         angleSteps[i] = angleSteps[i] / k
 
     # now generate the points
     points = []
 #    angle = random.uniform(0, 2 * math.pi)
-    angle = 0 + (kwad * ((2*math.pi)/4) )
+    angle = 0 + (kwad * ((2*math.pi)/8) )
     #print ('angle ' + str(angle) )
-    for i in range(numVerts):
+    for i in range(nrVerts):
         r_i = np.clip(random.gauss(aveRadius, spikeyness), 0, 2 * aveRadius)
         x = ctrX + r_i * math.cos(angle)
         y = ctrY + r_i * math.sin(angle)
         points.append((int(x), int(y)))
 
         angle = angle + angleSteps[i]
+    if invert:
+        points = points[::-1]
     return points
+
+def newpart(newpoints, x, y):
+    points = np.array(newpoints)
+    xP , yP ,_ = get_bezier_curve(points, rad =0, edgy =0  )
+    x = np.append(x,xP)
+    y = np.append(y,yP)
+    return x , y
 
 
 class Track:
@@ -151,11 +158,11 @@ class Track:
     Line follower follows a Track instance. This class contains methods for randomly generating, rendering and
     calculating relative follower distance, speed and direction.
     """
-
-    def __init__(self, pts, nb_checkpoints=100, render_params=None):
+    def __init__(self, pts, nb_checkpoints=500, render_params=None):
         l = LineString(pts).length
         n = int(l / 3e-3)  # Get number of points for 3 mm spacing
 
+        self.interpolflag = 0
         self.pts = interpolate_points(np.array(pts), n)  # interpolate points to get the right spacing
         self.x = self.pts[:, 0]
         self.y = self.pts[:, 1]
@@ -171,6 +178,7 @@ class Track:
 
         # Get length
         self.length = self.string.length
+        print('Length of Track is: ',self.length, 'cm or meter.')
 
         # Progress tracking setup
         self.progress = 0.
@@ -179,9 +187,10 @@ class Track:
         self.checkpoints = [i * (self.length / self.nb_checkpoints) for i in range(1, self.nb_checkpoints + 1)]
         self.next_checkpoint_idx = 0
         self.done = False
+        
 
     @classmethod
-    def generate(cls, approx_width=1., hw_ratio=1, seed=None, irregularity=0,
+    def generate(cls, approx_width=1, hw_ratio=0.5, seed=None, irregularity=0,
                  spikeyness=0.2, num_verts=10, *args, **kwargs):
         """
         Generate random track.
@@ -195,61 +204,73 @@ class Track:
         random.seed(seed)
         upscale = 1000.  # upscale so curve gen fun works
         r = upscale * approx_width / 2.
-        #pts = generate_polygon(0, 0, r, irregularity=irregularity, spikeyness=spikeyness, numVerts=num_verts)
-        pts = [(-500,-500),(500,-500),(500,200)]
-        pts2 = generate_polygon(200,200,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 0)
-        pts3 = generate_polygon(200,800,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 2)
-        pts4 = generate_polygon(-400,800,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 0)
-        pts5 = generate_polygon(-400,800,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 1)
-        pts6 = [(-700,700),(-700,-500),(-500,-500)]
-        pts = np.array(pts)
-        pts2 = np.array(pts2)
-        pts3 = np.array(pts3)
-        pts4 = np.array(pts4)
-        pts5 = np.array(pts5)
-        pts6 = np.array(pts6)
+
+        #empty 2D for iterating append at end.
+#        trackParts = []
+        # Generate straight corner of track with array of points and array to append to. Need to keep the tracks 'parts' 
+        # in order that they are supposed to be followed. line -> curve -> corner. not curve->line->corner.
+        # 
+        # First line are start array points.
+        x, y, _ = get_bezier_curve(( np.array([(0,-380),(130,-380)]) ), rad=0, edgy=0)
+             
+        # Curve left
+        x , y = newpart( generate_polygon(x[-1],y[-1]+60,60,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 6, amount=1,invert = 0),x ,y)
+        x , y = newpart(  [(x[-1],y[-1]),(35*math.sqrt(2)+x[-1],35*math.sqrt(2)+y[-1])],x ,y )
+        x , y = newpart( generate_polygon(x[-1]+30*math.sqrt(2),y[-1]-30*math.sqrt(2),60,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 2, amount=1,invert = 1),x,y)
+        x , y = newpart(  [(x[-1],y[-1]),(60+x[-1],y[-1])],x ,y )
+        x , y = newpart( generate_polygon(x[-1],y[-1]+60,60 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 6, amount=1,invert = 0),x,y)
+        x , y = newpart( generate_polygon(x[-1]+60,y[-1],60 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 2, amount=1,invert = 1),x,y)
+        x , y = newpart( generate_polygon(x[-1],y[-1]+60,60 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 6, amount=5,invert = 0),x,y)
+        x , y = newpart( generate_polygon(x[-1]-37.5*math.sqrt(2),y[-1]+37.5*math.sqrt(2),75 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 5, amount=2,invert = 1),x,y)
+        x , y = newpart(  [(x[-1],y[-1]),(x[-1]-12.5*math.sqrt(2),y[-1]+12.5*math.sqrt(2))],x ,y )
+        x , y = newpart( generate_polygon(x[-1]-30*math.sqrt(2),y[-1]-30*math.sqrt(2),60 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 1, amount=1,invert = 0),x,y)
+        x , y = newpart(  [(x[-1],y[-1]),(x[-1]-180, y[-1]), (x[-1]-180, y[-1]+45)],x ,y )
+        x , y = newpart( generate_polygon(x[-1]-60 ,y[-1], 60 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 0, amount=1,invert = 0),x,y)
+        x , y = newpart( generate_polygon(x[-1]+37.5*math.sqrt(2),y[-1]+37.5*math.sqrt(2),75 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 2, amount=3,invert = 1),x,y)
+        x , y = newpart( generate_polygon(x[-1],y[-1]+75,75 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 6, amount=5,invert = 0),x,y)
+        x , y = newpart(  [(x[-1],y[-1]),(x[-1]-60*math.sqrt(2), y[-1]-60*math.sqrt(2))],x ,y )
+        x , y = newpart( generate_polygon(x[-1]+37.5*math.sqrt(2),y[-1]-37.5*math.sqrt(2),75 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 3, amount=1,invert = 0),x,y)
+        x , y = newpart(  [(x[-1],y[-1]),(x[-1], y[-1]-240)],x ,y )
+        x , y = newpart( generate_polygon(x[-1]-60,y[-1],60 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 7, amount=1,invert = 1),x,y)
+        x , y = newpart(  [(x[-1],y[-1]),(x[-1]-7.5*math.sqrt(2), y[-1]-7.5*math.sqrt(2))],x ,y )
+        x , y = newpart( generate_polygon(x[-1]-37.5*math.sqrt(2),y[-1]+37.5*math.sqrt(2),75 ,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 4, amount=3,invert = 1),x,y)
+        x , y = newpart(  [(x[-1],y[-1]),(x[-1], y[-1]+90),(x[-1]-160, y[-1]+90),(x[-1]-160,y[0]),(x[0],y[0])],x ,y )
+
+        # Curve right, they need to be flipped 'curvePoints[::-1]'
+        #curve = np.array(generate_polygon(200,700,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 4, amount=2))
+        #trackParts.append(curve[::-1])
+
+        #trackParts.append( np.array(generate_polygon(-400,700,300,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 1, amount=2)) )
+        '''
+        curve5 = np.array(generate_polygon(-800,800,100,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 0))
+        curve6 = np.array(generate_polygon(-200,200,100,irregularity = 0,spikeyness = 0, numVerts = 180, kwad = 1))
+        x, y = appendTrack(curve5, x, y)
+        '''
         
-        #flip to left turn
-        pts3 = pts3[::-1]
-        
-        # Generate curve with points
-        x, y, _= get_bezier_curve(pts, rad=0, edgy=0)
-        x2,y2, _= get_bezier_curve(pts2, rad=0, edgy=0)
-        x3,y3, _= get_bezier_curve(pts3, rad=0, edgy=0)
-        x4,y4, _= get_bezier_curve(pts4, rad=0, edgy=0)
-        x5,y5, _= get_bezier_curve(pts5, rad=0, edgy=0)
-        x6,y6, _= get_bezier_curve(pts6, rad=0, edgy=0)
-        x = np.append(x,x2)
-        y = np.append(y,y2)
-        x = np.append(x,x3)
-        y = np.append(y,y3)
-        x = np.append(x,x4)
-        y = np.append(y,y4)
-        x = np.append(x,x5)
-        y = np.append(y,y5)
-        x = np.append(x,x6)
-        y = np.append(y,y6)
+        #iterate over track parts and append all together
+ #       for part in trackParts:
+ #           x, y = appendTrack(part, x, y)
+
         # Remove duplicated point
         x = x[:-1]
         y = y[:-1]
 
         # Scale y
+        hw_ratio = 1
         y = y * hw_ratio
 
         # Scale units
-        unit_scale = 1600
+        unit_scale = 180
         x, y = x / unit_scale, y / unit_scale
         pts = np.stack((x, y), axis=-1)
         #print(pts)
         
         # Check width / height:
-        if max(abs(min(x)), max(x)) * 2 > 1.5 * approx_width or max(abs(min(y)), max(y)) * 2 > 1.5 * approx_width * hw_ratio:
+        check = max(abs(min(x)), max(x)) * 2 > 3.5 * approx_width or max(abs(min(y)), max(y)) * 2 > 3.5 * approx_width * hw_ratio
+        print('Over boundaries: ', check)
+        if check:
             return cls.generate(approx_width, hw_ratio, seed, irregularity, spikeyness, num_verts, *args, **kwargs)
-
-        # Randomly flip track direction
-        np.random.seed(seed)
-        if np.random.choice([True, False]):
-            pts = np.flip(pts, axis=0)
+        print('points to connect: ', pts.size)
         return cls(pts, *args, **kwargs)
     @classmethod
     def from_file(cls, path, *args, **kwargs):
@@ -260,7 +281,7 @@ class Track:
         points = interpolate_points(points, 1000)
         return cls(points, *args, **kwargs)
     
-    def _render(self, w=3., h=2., ppm=1500, line_thickness=0.015, save=None, line_color="black",
+    def _render(self, w=6., h=5., ppm=1500, line_thickness=0.015, save=None, line_color="black",
                 background="white", line_opacity=0.8, dashed=False):
         """
         Render track using open-cv
@@ -539,28 +560,35 @@ class Track:
             self.next_checkpoint_idx += 1
             ret += 1
             if self.next_checkpoint_idx >= self.nb_checkpoints-1:
+                print(self.next_checkpoint_idx)
                 self.done = True
                 break
+        print("checkpts passed == ", self.next_checkpoint_idx, '/', self.nb_checkpoints)
         return ret
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    import os.path
 
-    # t = Track.generate(2.0, hw_ratio=0.7, seed=4125,
-    #                    spikeyness=0.2, nb_checkpoints=500)
+    t = Track.generate(2.0, hw_ratio=0.7, seed=None, spikeyness=0.2, nb_checkpoints=1000)
 
-    # img = t.render()
-    # plt.imshow(img)
-    # plt.show()
+    img = t.render(ppm=1500)
+    plt.imshow(img)
+    plt.savefig("track_generator.png", dpi=300)
+    plt.show()
 
-    for i in range(9):
+    '''
+    if os.path.isfile('track_generator.png'):
+        print ("File exist")
+    else:
+        print ("File not exist")  
         t = Track.generate(2.0, hw_ratio=0.7, seed=None,
                            spikeyness=0.2, nb_checkpoints=500)
         img = t.render(ppm=1000)
-        plt.subplot(3, 3, i+1)
         plt.imshow(img)
         plt.axis("off")
-    # plt.tight_layout()
-    plt.savefig("track_generator.png", dpi=300)
-    plt.show()
+        # plt.tight_layout()
+        plt.savefig("track_generator.png", dpi=300)
+        plt.show()
+'''
