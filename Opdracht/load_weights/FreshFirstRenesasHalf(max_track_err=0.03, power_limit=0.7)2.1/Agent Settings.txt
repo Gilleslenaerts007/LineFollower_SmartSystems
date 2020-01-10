@@ -1,5 +1,0 @@
-    random_process = OrnsteinUhlenbeckProcess(size=nb_actions, theta=.45, mu=0.45, sigma=0.3)
-    agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
-                      memory=memory, nb_steps_warmup_critic=60, nb_steps_warmup_actor=60,
-                      random_process=random_process, gamma=.99, target_model_update=1e-3)
-    agent.compile(Adam(lr=.001, clipnorm=1.), metrics=['mae'])

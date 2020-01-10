@@ -51,14 +51,14 @@ def build_agent(env):
     memory = SequentialMemory(limit=1000000, window_length=window_length)
     # Exploration policy - has a great effect on learning. Should encourage forward motion.
     # theta - how fast the process returns to the mean
-    # mu - mean value - this should be greater than 0 to encourage forward motion
+    # mu - mean value - this should be greater than 0 to encourage forward motion .. how much will weights adjust on wrong/right choice?
     # sigma - volatility of the process -> How fast and forcefull will he be turning?
     # Actor is the amount of outcome outputs
     # critic is the amount of inputs (each possible combination of actor outputs)
     # and decides improvements on model. (Double the actor steps)
-    random_process = OrnsteinUhlenbeckProcess(size=nb_actions, theta=.5, mu=0.3, sigma=0.3)
+    random_process = OrnsteinUhlenbeckProcess(size=nb_actions, theta=.7, mu=0.05, sigma=0.1)
     agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
-                      memory=memory, nb_steps_warmup_critic=80, nb_steps_warmup_actor=80,
+                      memory=memory, nb_steps_warmup_critic=30, nb_steps_warmup_actor=40,
                       random_process=random_process, gamma=.99, target_model_update=1e-3)
     agent.compile(Adam(lr=.001, clipnorm=1.), metrics=['mae'])
     return agent
@@ -101,6 +101,6 @@ if __name__ == '__main__':
 
     
     env = gym.make("LineFollower-v0")
-    #train(env, "FirstRenesasHalf(max_track_err=0.03, power_limit=0.7)", steps=100000, pretrained_path=None) pretrained_path="load_weights"
-    train(env, "RenesasHalf(max_track_err=0.03, power_limit=0.7)0.1", steps=100000, pretrained_path="load_weights")
+    #train(env, "RenesasHalf(max_track_err=0.03, power_limit=0.7)0.2.1", steps=100000, pretrained_path=None) pretrained_path="load_weights"
+    #train(env, "testtraining1", steps=125000, pretrained_path="load_weights")
     test(env, "load_weights")
